@@ -33,8 +33,9 @@ class Messenger {
 
     private val QUEUE_NAME = "MySuperQ"
     private val EXCHANGE_NAME = "MySuperE"
-    private val GAP = "                  "
+    private val GAP = "                                                  "
     val textArea = JTextArea()
+    val r = Random().nextInt(1000000)
 
     init{
         factory.host = "localhost"
@@ -48,8 +49,13 @@ class Messenger {
             override fun handleDelivery(consumerTag: String, envelope: Envelope,
                                         properties: AMQP.BasicProperties, body: ByteArray) {
                 val message = String(body, charset("UTF-8"))
+                if (message.startsWith(r.toString())) {
+                    channel.basicPublish("", QUEUE_NAME, null, message.toByteArray(charset("UTF-8")))
+                    return
+                }
+
                 println(" [x] Received '$message'")
-                textArea.append(message + "\n")
+                textArea.append(message.substring(message.indexOf(' ')) + "\n")
             }
         }
         channel.basicConsume(QUEUE_NAME, true, consumer)
@@ -82,7 +88,8 @@ class Messenger {
 
         val sendButton = JButton("Send")
         sendButton.addActionListener { e ->
-            channel.basicPublish("", QUEUE_NAME, null, textField.text.toByteArray(charset("UTF-8")))
+            val m = r.toString() + " " + textField.text
+            channel.basicPublish("", QUEUE_NAME, null, m.toByteArray(charset("UTF-8")))
             textArea.append(GAP + textField.text + "\n")
             textField.text = "";
         }
