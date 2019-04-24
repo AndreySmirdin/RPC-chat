@@ -6,6 +6,7 @@ import javax.swing.*
 import io.grpc.ManagedChannelBuilder
 import io.grpc.ManagedChannel
 import io.grpc.stub.StreamObserver
+import java.util.*
 
 class Messenger {
 
@@ -36,21 +37,22 @@ class Messenger {
     val textArea = JTextArea()
 
     init{
-        factory.host = "192.168.43.70"
-        channel.exchangeDeclare(EXCHANGE_NAME, BuiltinExchangeType.FANOUT)
-//        channel.queueDeclare(QUEUE_NAME, false, false, false, null)
+        factory.host = "localhost"
+//        channel.exchangeDeclare(EXCHANGE_NAME, BuiltinExchangeType.FANOUT)
+        channel.queueDeclare(QUEUE_NAME, false, false, false, null)
 
-        val queueName = channel.queueDeclare().queue
-        channel.queueBind(queueName, EXCHANGE_NAME, "")
+//        val queueName = channel.queueDeclare().queue
+//        channel.queueBind(queueName, EXCHANGE_NAME, "")
 
         val consumer = object : DefaultConsumer(channel) {
-            override fun handleDelivery(consumerTag: String, envelope: Envelope, properties: AMQP.BasicProperties, body: ByteArray) {
+            override fun handleDelivery(consumerTag: String, envelope: Envelope,
+                                        properties: AMQP.BasicProperties, body: ByteArray) {
                 val message = String(body, charset("UTF-8"))
                 println(" [x] Received '$message'")
-                textArea.append(message)
+                textArea.append(message + "\n")
             }
         }
-        channel.basicConsume(queueName, true, consumer)
+        channel.basicConsume(QUEUE_NAME, true, consumer)
     }
 
     fun initChat() {
@@ -80,7 +82,8 @@ class Messenger {
 
         val sendButton = JButton("Send")
         sendButton.addActionListener { e ->
-            channel.basicPublish("", EXCHANGE_NAME, null, textField.text.toByteArray(charset("UTF-8")))
+            channel.basicPublish("", QUEUE_NAME, null, textField.text.toByteArray(charset("UTF-8")))
+            textArea.append(GAP + textField.text + "\n")
             textField.text = "";
         }
         inputPanel.add(sendButton)
