@@ -1,8 +1,31 @@
+import com.sun.org.apache.xml.internal.serializer.utils.Utils.messages
 import java.awt.BorderLayout
 import java.awt.Dimension
 import javax.swing.*
+import io.grpc.ManagedChannelBuilder
+import io.grpc.ManagedChannel
+import io.grpc.stub.StreamObserver
+
 
 class Messenger {
+    val channel = ManagedChannelBuilder.forAddress("localhost", 9090).usePlaintext(true).build()
+    val chatService = ChatServiceGrpc.newStub(channel)
+
+    val chat = chatService.chat(object : StreamObserver<Chat.ChatMessageFromServer> {
+        override fun onNext(value: Chat.ChatMessageFromServer) {
+
+        }
+
+        override fun onError(t: Throwable) {
+            t.printStackTrace()
+            println("Disconnected1")
+        }
+
+        override fun onCompleted() {
+            println("Disconnected2")
+        }
+    })
+
 
     fun initChat() {
         val frame = JFrame("Chat")
@@ -30,7 +53,10 @@ class Messenger {
         inputPanel.add(textField)
 
         val sendButton = JButton("Send")
-        sendButton.addActionListener { e -> println("Hello") }
+        sendButton.addActionListener { e ->
+            chat.onNext(Chat.ChatMessage.newBuilder().setFrom("Andrey").setMessage(textField.text).build());
+            textField.text = "";
+        }
         inputPanel.add(sendButton)
 
         return inputPanel
@@ -41,4 +67,8 @@ class Messenger {
         textArea.isEditable = false
         return JScrollPane(textArea)
     }
+}
+
+fun main() {
+    Messenger().initChat()
 }
