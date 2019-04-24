@@ -1,3 +1,4 @@
+import com.rabbitmq.client.*
 import com.sun.org.apache.xml.internal.serializer.utils.Utils.messages
 import java.awt.BorderLayout
 import java.awt.Dimension
@@ -5,12 +6,6 @@ import javax.swing.*
 import io.grpc.ManagedChannelBuilder
 import io.grpc.ManagedChannel
 import io.grpc.stub.StreamObserver
-
-
-import com.rabbitmq.client.AMQP
-import com.rabbitmq.client.ConnectionFactory
-import com.rabbitmq.client.DefaultConsumer
-import com.rabbitmq.client.Envelope
 
 class Messenger {
 
@@ -36,13 +31,17 @@ class Messenger {
     val channel = connection.createChannel()
 
     private val QUEUE_NAME = "MySuperQ"
+    private val EXCHANGE_NAME = "MySuperE"
     private val GAP = "                  "
     val textArea = JTextArea()
 
     init{
         factory.host = "192.168.43.70"
-        channel.queueDeclare(QUEUE_NAME, false, false, false, null)
+        channel.exchangeDeclare(EXCHANGE_NAME, BuiltinExchangeType.FANOUT)
+//        channel.queueDeclare(QUEUE_NAME, false, false, false, null)
 
+        val queueName = channel.queueDeclare().queue
+        channel.queueBind(queueName, EXCHANGE_NAME, "")
 
         val consumer = object : DefaultConsumer(channel) {
             override fun handleDelivery(consumerTag: String, envelope: Envelope, properties: AMQP.BasicProperties, body: ByteArray) {
@@ -51,7 +50,7 @@ class Messenger {
                 textArea.append(message)
             }
         }
-        channel.basicConsume(QUEUE_NAME, true, consumer)
+        channel.basicConsume(queueName, true, consumer)
     }
 
     fun initChat() {
@@ -81,7 +80,7 @@ class Messenger {
 
         val sendButton = JButton("Send")
         sendButton.addActionListener { e ->
-            channel.basicPublish("", QUEUE_NAME, null, textField.text.toByteArray(charset("UTF-8")))
+            channel.basicPublish("", EXCHANGE_NAME, null, textField.text.toByteArray(charset("UTF-8")))
             textField.text = "";
         }
         inputPanel.add(sendButton)
